@@ -1,0 +1,15 @@
+cradle:
+  cabal:
+    - path: "./app"
+      component: "ParseMe:exe:ParseMe-exe"
+    - path: "./src"
+      component: "lib:ParseMe"
+    - path: "./test"
+      component: "ParseMe:ParseMe-test"
+  # stack:
+  #   - path: "./app"
+  #     component: "ParseMe:exe:ParseMe-exe"
+  #   - path: "./src"
+  #     component: "ParseMe:lib"
+  #   - path: "./test"
+  #     component: "ParseMe:ParseMe-test"
