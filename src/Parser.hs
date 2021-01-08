@@ -9,8 +9,8 @@ module Parser (
 
   -- * Debug
   -- $debug
-  pretty,
-  Parser.print,
+  prettyResult,
+  printResult,
 ) where
 
 import Data.Text as T
@@ -19,13 +19,13 @@ import Data.Text.IO as TIO
 import Parser.Combinators as Y
 import Parser.Types as Types hiding (Pos (..), Src (..))
 
-print :: (Show a) => Result a -> IO ()
-print s = do
-  TIO.putStrLn $ pretty s
+printResult :: (Show a) => Result a -> IO ()
+printResult s = do
+  TIO.putStrLn $ prettyResult s
 
-pretty :: (Show a) => Result a -> T.Text
-pretty (Left err) = prettyError err
-pretty (Right res) = T.pack $ show res -- @TODO Add pretty version
+prettyResult :: (Show a) => Result a -> T.Text
+prettyResult (Left err) = prettyError err
+prettyResult (Right res) = T.pack $ show res -- @TODO Add pretty version
 
 prettyError :: Error -> T.Text
 prettyError (Error pos err context) = case err of
@@ -86,7 +86,7 @@ We hide `Src` and `Pos` that are only needed internally.
 Module containing all combinators.
 -}
 
-{- $Debug
+{- $debug
 Helper function to pretty print a Parser result to get more information about a failure
 or a success
 -}
