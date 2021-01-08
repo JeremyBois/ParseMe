@@ -1,12 +1,14 @@
 module Parser.Types.Markdown (
   -- $bnf
-  Paragraph (..),
   Style (..),
-  Link,
-  Image,
+  -- Link,
+  -- Image,
   -- * Smart constructors
-  -- Level,
-  -- mkLevel,
+  Level,
+  mkLevel,
+  Paragraph,
+  mkHeading,
+  mkLine,
 ) where
 
 import Data.Text as T
@@ -16,13 +18,20 @@ newtype Level = Level {unLevel :: Int}
   deriving stock (Show)
   deriving newtype (Eq)
 
--- mkLevel :: String -> Level
--- mkLevel = Level . Prelude.length
+mkLevel :: String -> Level
+mkLevel = Level . Prelude.length
+
 
 data Paragraph
-  = Normal [Style]
+  = Line [Style]
   | Heading Level [Style]
   deriving stock (Eq, Show)
+
+mkHeading :: Level -> [Style] -> Paragraph
+mkHeading = Heading
+
+mkLine :: [Style] -> Paragraph
+mkLine = Line
 
 data Style
   = Text T.Text
@@ -46,13 +55,13 @@ __BNF used to implement combinators and Markdown AST__
 @
 
   # TEXT
-  style        ::= bold | emphasize | strike | underscore | code | tag | text
+  style        ::= bold | emph | strike | underscore | inlineCode | tag | text
   text         ::= (modifiersEsc | !(modifiers | escaped | linebreak | newline)+ )+
   bold         ::= "**" ( style )+ "**"
-  emphasize    ::= "*"  ( style )+ "*"
+  emph         ::= "*"  ( style )+ "*"
   strike       ::= "~~" ( style )+ "~~"
   underscore   ::= "__" ( style )+ "__"
-  code         ::= "`"  ( text )+ "`"
+  inlineCode   ::= "`"  ( text )+ "`"
   tag          ::= "#"  ( text )+
 
   # SPECIAL CHARACTER
@@ -64,8 +73,10 @@ __BNF used to implement combinators and Markdown AST__
   linebreak    ::= "  " newline
   newline      ::= "\r\n" | "\n"
 
-  # HEADERS
-  header       ::= "#"+ " " {style}+
+  # PARAGRAPH
+  paragraph    ::= (header | line)+
+  header       ::= "#"+ " " {style}+ linebreak
+  line         ::= {style}+ linebreak
 
   # LINK
   link         ::= "[" text "](" text ")"

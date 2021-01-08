@@ -1,34 +1,43 @@
 {-# LANGUAGE TupleSections #-}
 
 module Parser.Combinators.Markdown (
-  -- *** Primitives
-  tagP,
-  modifiersCharP,
-  delimitersP,
-  modifiersEscP,
-  linebreakP,
-
-  -- *** Data
+  -- *** Style
+  styleP,
   textP,
   boldP,
   emphP,
+  strikeP,
+  underscoreP,
   inlineCodeP,
-  styleP,
+  tagP,
+
+  -- *** Paragraph
+  paragraphP,
+  lineP,
+  headingP,
 ) where
+
+{-  @TODO
+  - move to helper to be used in all someTill / manyTill to avoid infinite loop
+  - replace <$> <*> with liftA2
+-}
 
 import Data.Char (isLetter)
 
 import Data.Text as T
 
+import Control.Applicative (liftA2)
+
 import Parser.Combinators.Primitive
 import Parser.Types (
-  -- Parser
   Context (..),
+  Level,
+  Paragraph,
   Parser,
-  -- Markdown
   Style (..),
-  -- Level,
-  -- mkLevel,
+  mkHeading,
+  mkLevel,
+  mkLine,
  )
 
 --
@@ -47,12 +56,13 @@ newline = "\n"
 notTextCharacters :: T.Text
 notTextCharacters = modifiers <> delimiters <> newline <> T.pack ['\\', '\00']
 
-isElem :: Char -> Text -> Bool
-isElem c = T.any (== c)
+--
+-- Helpers
+--
 
---
--- Markdown combinators
---
+-- | A `elem` that works with `T.Text`
+isElem :: Char -> T.Text -> Bool
+isElem c = T.any (== c)
 
 {- | Parser for a markdown modifier (see BNF modifiers).
 
@@ -164,7 +174,7 @@ underscoreP =
 tagP :: Parser Style
 tagP = Tag . T.pack <$> (char '#' *> some (match (Context "Word") isLetter) <* spaceP)
 
-{- Parser for any style (See BNF style)
+{- | Parser for any style (See BNF style)
 
 ==== __Examples__
 
@@ -183,16 +193,32 @@ styleP =
     <|> strikeP
     <|> underscoreP
 
+--
+-- Paragraph
+--
 
--- --
--- -- Heading
--- --
+levelP :: Parser Level
+levelP = mkLevel <$> someTill (char '#') (char ' ')
 
--- levelP :: Parser Level
--- levelP = mkLevel <$> someTill (char '#') (char ' ')
+headingP :: Parser Paragraph
+headingP = liftA2 mkHeading levelP (someTill styleP theEnd)
+  where
+    theEnd = linebreakP <|> (' ' <$ eof)
 
+lineP :: Parser Paragraph
+lineP = mkLine <$> someTill styleP theEnd
+  where
+    theEnd = linebreakP <|> (' ' <$ eof)
 
+{- | Parser for a paragraph (see BNF paragraph
 
+==== __Examples__
+
+>>> runParser (some paragraphP) (mkSource "## Heading \n Text **Bold**")
+Right (Src {srcPos = Pos {unPos = 26}, srcText = ""},[Heading (Level {unLevel = 2}) [Text "Heading "],Line [Text " Text ",Bold [Text "Bold"]]])
+-}
+paragraphP :: Parser Paragraph
+paragraphP = headingP <|> lineP
 
 -- linkP :: Parser (T.Text, T.Text)
 -- linkP = do
