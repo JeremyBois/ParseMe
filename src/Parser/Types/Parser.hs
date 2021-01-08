@@ -20,6 +20,9 @@ module Parser.Types.Parser (
 
 import Control.Applicative
 
+import Data.Text as T
+
+
 newtype Pos = Pos {unPos :: Int}
   deriving stock (Show)
   deriving newtype (Eq)
@@ -27,7 +30,7 @@ newtype Pos = Pos {unPos :: Int}
 test_mkPos :: Int -> Pos
 test_mkPos = Pos
 
-newtype Context = Context {unContext :: String}
+newtype Context = Context {unContext :: T.Text}
   deriving stock (Show)
   deriving newtype (Eq)
 
@@ -45,26 +48,24 @@ data Error = Error !Pos !ErrorKind !Context
 -- | An input source with position and text to be parsed
 data Src = Src
   { srcPos :: !Pos,
-    srcText :: !String
+    srcText :: !T.Text
   }
   deriving stock (Show, Eq)
 
 -- | Expose a smart constructor to build a Src
-mkSource :: String -> Src
+mkSource :: T.Text -> Src
 mkSource str = Src {srcPos = Pos 0, srcText = str}
 
-test_mkSrc :: Int -> String -> Src
+test_mkSrc :: Int -> T.Text -> Src
 test_mkSrc pos = Src (Pos pos)
 
 {- | Extract next character if available from source
  and update character position in source
 -}
 extract :: Src -> Maybe (Char, Src)
-extract (Src _ []) = Nothing
-extract (Src (Pos loc) (x : xs)) =
-  Just
-    ( x,
-      Src (Pos $ loc + 1) xs
+extract (Src (Pos loc) txt) = if T.null txt then Nothing else Just
+    ( T.head txt,
+      Src (Pos $ loc + 1) (T.tail txt)
     )
 
 -- | Make life easier with an alias

@@ -7,6 +7,9 @@ module Parser.Types.Markdown (
   Image,
 ) where
 
+import Data.Text as T
+
+
 newtype Level = Level {unLevel :: Int}
   deriving stock (Show)
   deriving newtype (Eq)
@@ -17,17 +20,17 @@ data Paragraph
   deriving stock (Eq, Show)
 
 data TextM
-  = Text String
+  = Text T.Text
   | Emph TextM
   | Bold TextM
   | Strike TextM
   | Underscore TextM
   | Code TextM
-  | Tag String
+  | Tag T.Text
   deriving stock (Show, Eq)
 
-data Link = Link {linkName :: String, linkURI :: String} deriving stock (Show, Eq)
-data Image = Image {imageAlt :: String, imageURI :: String} deriving stock (Show, Eq)
+data Link = Link {linkName :: T.Text, linkURI :: T.Text} deriving stock (Show, Eq)
+data Image = Image {imageAlt :: T.Text, imageURI :: T.Text} deriving stock (Show, Eq)
 
 
 {- $bnf

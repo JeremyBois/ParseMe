@@ -33,6 +33,8 @@ import Data.Char (isDigit, isSpace)
 
 import Data.List.NonEmpty (NonEmpty)
 
+import Data.Text as T
+
 import Parser.Types
 
 --
@@ -86,7 +88,7 @@ token :: Parser a -> Parser a
 token p = many spaceP *> p
 
 -- | Parse input string (first consume any leading space).
-symbol :: String -> Parser String
+symbol :: T.Text -> Parser T.Text
 symbol = token . stringP
 
 -- | A parser that always parse successfuly expect for eof
@@ -103,7 +105,7 @@ any = match (Context "Any Character") (const True)
 Right (Src {srcPos = Pos {unPos = 1}, srcText = "bc"},'a')
 -}
 choice :: NonEmpty (Parser a) -> Parser a
-choice = foldr1 (<|>)
+choice = Prelude.foldr1 (<|>)
 
 {- | Parse a value enclosed between two matching parsers
 First two parsers only consume the source respectively
@@ -131,11 +133,11 @@ between b a p = b *> p <* a
 
 -- | Failed if not EOF else always succeed without moving the cursor position
 eof :: Parser ()
-eof = Parser $ \src -> case src of
+eof = Parser $ \src@(Src pos txt) -> if T.null txt
   -- EOF parsed
-  (Src _ []) -> Right (src, ())
+  then Right (src, ())
   -- Still something to parse
-  (Src pos (x : _)) -> Left $ Error pos (UnexpectedChar ('\NUL', x)) (Context "Parse EOF")
+  else Left $ Error pos (UnexpectedChar ('\NUL', T.head txt)) (Context "Parse EOF")
 
 {- | Parse ZERO or more element separated with a specific separator
 
@@ -188,8 +190,11 @@ digitP :: Parser Char
 digitP = match (Context "Digit") isDigit
 
 -- | Parser all character of input string if all match else failed
-stringP :: String -> Parser String
-stringP = traverse (\c -> match (Context "String") (== c))
+stringP :: T.Text -> Parser T.Text
+stringP s = T.pack <$> traverse (\c -> match (Context "String") (== c)) (T.unpack s)
+-- stringP s = (\c -> (T.singleton . char) c) <$> s
+-- stringP s = T.map char s
+-- @TODO rewrite it without having to pack and unpack
 
 --
 -- Tests

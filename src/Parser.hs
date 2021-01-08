@@ -9,26 +9,34 @@ module Parser (
 
   -- * Debug
   -- $debug
+  pretty,
   Parser.print,
 ) where
+
+import Data.Text as T
+import Data.Text.IO as TIO
 
 import Parser.Combinators as Y
 import Parser.Types as Types hiding (Pos (..), Src (..))
 
-print :: (Show a) => Result a -> String
-print (Left err) = printError err
-print (Right res) = show res
+print :: (Show a) => Result a -> IO ()
+print s = do
+  TIO.putStrLn $ pretty s
 
-printError :: Error -> String
-printError (Error pos err context) = case err of
+pretty :: (Show a) => Result a -> T.Text
+pretty (Left err) = prettyError err
+pretty (Right res) = T.pack $ show res -- @TODO Add pretty version
+
+prettyError :: Error -> T.Text
+prettyError (Error pos err context) = case err of
   UnexpectedEof ->
     mconcat
       [ "ERROR :: Get <",
         "EOF",
         "> at ",
-        show pos,
+        (T.pack . show) pos,
         " (",
-        show err,
+        (T.pack . show) err,
         " - ",
         unContext context,
         ")."
@@ -36,13 +44,17 @@ printError (Error pos err context) = case err of
   (UnexpectedChar (asked, found)) ->
     mconcat
       [ "ERROR :: Expected <",
-        [asked],
+        T.singleton asked,
         "> but get <",
-        [found],
+        T.singleton found,
         "> at ",
-        show pos,
+        (T.pack . show) pos,
         " (",
-        show err,
+        "UnexpectedChar (",
+        T.singleton asked,
+        ", ",
+        T.singleton found,
+        ")",
         " - ",
         unContext context,
         ")."
@@ -50,11 +62,11 @@ printError (Error pos err context) = case err of
   (MissmatchPredicate found) ->
     mconcat
       [ "ERROR :: Get <",
-        [found],
+        T.singleton found,
         "> at ",
-        show pos,
+        (T.pack . show) pos,
         " (",
-        show err,
+        (T.pack . show) err,
         " - ",
         unContext context,
         ")."

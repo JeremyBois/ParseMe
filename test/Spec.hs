@@ -1,5 +1,8 @@
 import Test.Hspec (describe, hspec, it, shouldBe)
 import Test.QuickCheck
+import Test.QuickCheck.Instances.Text()
+
+import Data.Text as T
 
 import Parser
 
@@ -36,7 +39,7 @@ main = do
 
 testParseCharSuccess :: Char -> Bool
 testParseCharSuccess myChar =
-  runParser (char myChar) (mkSource [myChar]) == result
+  runParser (char myChar) (mkSource (T.singleton myChar)) == result
   where
     result = Right (test_mkSrc 1 "", myChar)
 
@@ -49,7 +52,7 @@ testParseCharExhausted myChar =
 
 testParseChar :: Char -> Char -> Bool
 testParseChar asked found =
-  runParser (char asked) (mkSource [found]) == result
+  runParser (char asked) (mkSource (T.singleton found)) == result
   where
     result
       | [found] == "" = Left $ Error (test_mkPos 0) UnexpectedEof (Context "EOF")
@@ -61,18 +64,18 @@ testParseChar asked found =
             (Context "Specific Character")
       | otherwise = Right (test_mkSrc 1 "", found)
 
-testParseString :: String -> String -> Bool
+testParseString :: T.Text -> T.Text -> Bool
 testParseString asked found
   | asked == found = parseResult == result
-  | null found = parseResult == Left (Error (test_mkPos 0) UnexpectedEof (Context "String"))
+  | T.null found = parseResult == Left (Error (test_mkPos 0) UnexpectedEof (Context "String"))
   --  Should be updated to test if position and missmatch is correct
   | otherwise = parseResult /= result
   where
     parseResult = runParser (stringP asked) (mkSource found)
-    result = Right (test_mkSrc (length asked) "", found)
+    result = Right (test_mkSrc (T.length asked) "", found)
 
-stringGenerator :: Gen String
-stringGenerator = frequency [(10, arbitrary), (5, pure ""), (5, pure "Same string ! hfda 32 q")]
+stringGenerator :: Gen T.Text
+stringGenerator = frequency [(10, arbitrary), (5, pure T.empty ), (5, pure "Same string ! hfda 32 q")]
 
 -- testParseChar' :: Char -> Char -> (Parser.Result Char, Parser.Result Char)
 -- testParseChar' asked found =

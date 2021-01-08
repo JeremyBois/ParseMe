@@ -12,6 +12,8 @@ module Parser.Combinators.Markdown (
 
 import Data.Char (isLetter)
 
+import Data.Text as T
+
 import Parser.Combinators.Primitive
 import Parser.Types (
   -- Parser
@@ -25,17 +27,20 @@ import Parser.Types (
 -- Constants
 --
 
-modifiers :: String
+modifiers :: T.Text
 modifiers = "*_`~#"
 
-delimiters :: String
+delimiters :: T.Text
 delimiters = "[]()|"
 
-newline :: String
+newline :: T.Text
 newline = "\n"
 
-notTextCharacters :: String
-notTextCharacters = modifiers <> delimiters <> newline <> ['\\']
+notTextCharacters :: T.Text
+notTextCharacters = modifiers <> delimiters <> newline <> T.singleton '\\'
+
+isElem :: Char -> Text -> Bool
+isElem c = T.any (== c)
 
 --
 -- Markdown combinators
@@ -49,7 +54,7 @@ notTextCharacters = modifiers <> delimiters <> newline <> ['\\']
 Right (Src {srcPos = Pos {unPos = 6}, srcText = ""},"*_`~#")
 -}
 modifiersP :: Parser Char
-modifiersP = match (Context "Modifiers") (`elem` modifiers)
+modifiersP = match (Context "Modifiers") (`isElem` modifiers)
 
 {- | Parser for a delimiter (see BNF delimiters)
 
@@ -59,7 +64,7 @@ modifiersP = match (Context "Modifiers") (`elem` modifiers)
 Right (Src {srcPos = Pos {unPos = 5}, srcText = ""},"[]()|")
 -}
 delimitersP :: Parser Char
-delimitersP = match (Context "Delimiters") (`elem` delimiters)
+delimitersP = match (Context "Delimiters") (`isElem` delimiters)
 
 {- | Parser for an escaped modifier (see BNF modifiersEsc)
 
@@ -87,26 +92,30 @@ linebreakP = many spaceP' *> newlineP -- spaceP' consumes '\t'
 newlineP :: Parser Char
 newlineP = char '\n'
 
-{- | Parser for markdown text (see BNF text)
--}
-textP :: Parser String
+-- | Parser for markdown text (see BNF text)
+textP :: Parser TextM
 textP =
-  mconcat
+  Text . T.pack . mconcat
     <$> many
       ( some modifiersEscP
-          <|> some (match (Context "Valid text") (not . (`elem` notTextCharacters)))
+          <|> some
+            ( match
+                (Context "Valid text")
+                (not . (`isElem` notTextCharacters))
+            )
       )
 
-tagP :: Parser TextM
-tagP = Tag <$> (char '#' *> some (match (Context "Word") isLetter) <* spaceP)
 
--- boldP :: Parser String
+tagP :: Parser TextM
+tagP = Tag . T.pack <$> (char '#' *> some (match (Context "Word") isLetter) <* spaceP)
+
+-- boldP :: Parser T.Text
 -- boldP = between (symbol "**") (symbol "**") (some normalCharP)
 
--- italicP :: Parser String
+-- italicP :: Parser T.Text
 -- italicP = between (symbol "*") (symbol "*") (some normalCharP)
 
--- linkP :: Parser (String, String)
+-- linkP :: Parser (T.Text, T.Text)
 -- linkP = do
 --   n <- name (some $ charDifferentFromP (== ']'))
 --   l <- link (some $ charDifferentFromP (== ')'))

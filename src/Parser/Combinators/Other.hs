@@ -11,6 +11,8 @@ import Control.Monad (replicateM)
 
 import Data.Char (isDigit)
 
+import Data.Text as T
+
 import Parser.Combinators.Primitive
 import Parser.Types.Parser (Context (..), Parser)
 
@@ -18,7 +20,7 @@ import Parser.Types.Parser (Context (..), Parser)
 -- Phone numbers
 --
 
-areaCodeP :: Parser String
+areaCodeP :: Parser T.Text
 areaCodeP = do
   -- Prefer _ <- to allow the parser to rewrite it in an applicative way using ApplicativeDo
   -- https://hackage.haskell.org/package/base-4.14.1.0/docs/Control-Applicative.html#v:-42--62-
@@ -27,32 +29,31 @@ areaCodeP = do
   _ <- many (char '(')
 
   -- Consume `00` or `+` if any
-  _ <-
-    replicateM 2 (char '0')
-      <|> some (char '+')
+  _ <- replicateM 2 (char '0')
+      <|> many (char '+')
 
-  -- Get area code
-  digits <- replicateM 2 digitP
+  -- Get area code (3 or 2 digits)
+  digits <- T.pack <$> (replicateM 3 digitP <|> replicateM 2 digitP)
 
   -- Consumes `)` if any
   _ <- many $ char ')'
 
   return digits
 
-internationalPhoneNumberP :: Parser String
+internationalPhoneNumberP :: Parser T.Text
 internationalPhoneNumberP = do
   _ <- areaCodeP
 
   _ <- many (char '0')
 
-  digits <- replicateM 9 (token digitP)
+  digits <- T.pack <$> replicateM 9 (token digitP)
 
-  return $ '0' : digits
+  return $ "0" <> digits
 
-localPhoneNumberP :: Parser String
-localPhoneNumberP = replicateM 10 (token digitP)
+localPhoneNumberP :: Parser T.Text
+localPhoneNumberP = T.pack <$> replicateM 10 (token digitP)
 
-phoneNumberP :: Parser String
+phoneNumberP :: Parser T.Text
 phoneNumberP =
   (internationalPhoneNumberP <|> localPhoneNumberP)
     <* ( some (match (Context "Not a digit") (not . isDigit))
@@ -76,7 +77,7 @@ boolP = tryTrue <|> tryFalse
 
 -- -- | *> - Sequence actions, discarding the value of the first argument
 -- -- <* - Sequence actions, discarding the value of the second argument
--- quoteP :: Parser String
+-- quoteP :: Parser T.Text
 -- quoteP = char '\"' *> many normalCharP <* char '\"'
 
 -- normalCharP :: Parser Char
