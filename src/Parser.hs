@@ -1,21 +1,19 @@
 -- | Module containing parser data
-module Parser
-  ( -- * Types
-    -- $type
-    module X,
+module Parser (
+  -- * Types
+  module Types,
 
-    -- * Combinators
-    -- $combinator
-    module Y,
+  -- * Combinators
+  -- $combinator
+  module Y,
 
-    -- * Debug
-    -- $debug
-    Parser.print,
-  )
-where
+  -- * Debug
+  -- $debug
+  Parser.print,
+) where
 
 import Parser.Combinators as Y
-import Parser.Types as X hiding (Pos (..), Src (..))
+import Parser.Types as Types hiding (Pos (..), Src (..))
 
 print :: (Show a) => Result a -> String
 print (Left err) = printError err
@@ -68,6 +66,8 @@ printError (Error pos err context) = case err of
 
 {- $type
 Module containing types for the Parser and Markdown AST.
+
+We hide `Src` and `Pos` that are only needed internally.
 -}
 
 {- $combinator

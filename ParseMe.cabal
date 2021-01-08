@@ -39,7 +39,7 @@ common common-options
     ghc-options:       -Wmissing-deriving-strategies
                        -Werror=missing-deriving-strategies
                        -fwrite-ide-info
-                       -hiedir=../.hie
+                       -hiedir=.hie
   if impl(ghc >= 8.10)
     ghc-options:       -Wunused-packages
 
@@ -62,7 +62,10 @@ library
 
   other-modules:
       Parser.Combinators.Primitive
+      Parser.Combinators.Markdown
+      Parser.Combinators.Other
       Parser.Types.Parser
+      Parser.Types.Markdown
 
 executable ParseMe-exe
   import:              common-options

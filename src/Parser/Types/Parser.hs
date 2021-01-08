@@ -1,26 +1,24 @@
-module Parser.Types.Parser
-  ( --
-    -- * Parser types
-    ErrorKind (..),
-    Context (..),
-    Error (..),
-    Parser (..),
-    Result,
-    -- * Utilities
-    extract,
-    mkSource,
-    -- * Tests only
-    test_mkSrc,
-    test_mkPos,
-    -- * Internal only (hiding by Parser reimport)
-    Pos (..),
-    Src (..),
-  )
-where
+{- Implementation of Parser types and instances -}
+module Parser.Types.Parser (
+  -- ** Types
+  ErrorKind (..),
+  Context (..),
+  Error (..),
+  Parser (..),
+  Result,
 
+  -- ** Utilities
+  extract,
+  mkSource,
+
+  -- ** Internal
+  Pos (..),
+  Src (..),
+  test_mkSrc,
+  test_mkPos,
+) where
 
 import Control.Applicative
-
 
 newtype Pos = Pos {unPos :: Int}
   deriving stock (Show)
@@ -58,8 +56,9 @@ mkSource str = Src {srcPos = Pos 0, srcText = str}
 test_mkSrc :: Int -> String -> Src
 test_mkSrc pos = Src (Pos pos)
 
--- | Extract next character if available from source
--- and update character position in source
+{- | Extract next character if available from source
+ and update character position in source
+-}
 extract :: Src -> Maybe (Char, Src)
 extract (Src _ []) = Nothing
 extract (Src (Pos loc) (x : xs)) =
@@ -71,8 +70,9 @@ extract (Src (Pos loc) (x : xs)) =
 -- | Make life easier with an alias
 type Result a = Either Error (Src, a)
 
--- | A parser that can parse a Src and return an error or
--- the parsing result with remaining source
+{- | A parser that can parse a Src and return an error or
+ the parsing result with remaining source
+-}
 newtype Parser a = Parser
   { runParser :: Src -> Result a
   }

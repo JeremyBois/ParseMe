@@ -1,31 +1,34 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Parser.Combinators.Primitive
-  ( --
-    -- * Reimports
-    some,
-    many,
-    (<|>),
-    -- * Base
-    match,
-    char,
-    token,
-    symbol,
-    eof,
-    Parser.Combinators.Primitive.any,
-    -- * Alternative
-    choice,
-    between,
-    sepByMany,
-    sepBySome,
-    -- * Convenience
-    digitP,
-    stringP,
-    spaceP,
-  )
-where
+module Parser.Combinators.Primitive (
+  -- *** Control.Applicative
+  -- | Reimport `many`, `some`, `(<|>)` from `Control.Applicative
+  some,
+  many,
+  (<|>),
 
-import Control.Applicative (some, many, (<|>))
+  -- *** Base
+  match,
+  char,
+  token,
+  symbol,
+  eof,
+  Parser.Combinators.Primitive.any,
+
+  -- *** Alternative
+  choice,
+  between,
+  sepByMany,
+  sepBySome,
+
+  -- *** Convenience
+  digitP,
+  stringP,
+  spaceP,
+  spaceP',
+) where
+
+import Control.Applicative (many, some, (<|>))
 import Data.Char (isDigit, isSpace)
 
 import Data.List.NonEmpty (NonEmpty)
@@ -89,6 +92,7 @@ symbol = token . stringP
 -- | A parser that always parse successfuly expect for eof
 any :: Parser Char
 any = match (Context "Any Character") (const True)
+
 
 {- | Select first working parser from a non empty list of choice
 
@@ -171,9 +175,13 @@ sepBySome elementP sepP = (:) <$> elementP <*> many (sepP *> elementP)
 -- Convenience
 --
 
--- | Parse next character is its a space else failed
+-- | Parse next character is its a space else failed (newline is included)
 spaceP :: Parser Char
 spaceP = match (Context "Space") isSpace
+
+-- | Parse next character is its a space else failed (newline excluded)
+spaceP' :: Parser Char
+spaceP' = match (Context "Space") ((&&) <$> isSpace <*> (/= '\n'))
 
 -- | Parse next character if its a digit else failed
 digitP :: Parser Char
@@ -182,7 +190,6 @@ digitP = match (Context "Digit") isDigit
 -- | Parser all character of input string if all match else failed
 stringP :: String -> Parser String
 stringP = traverse (\c -> match (Context "String") (== c))
-
 
 --
 -- Tests
