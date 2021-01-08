@@ -1,13 +1,19 @@
+{-# LANGUAGE TupleSections #-}
+
 module Parser.Combinators.Markdown (
   -- *** Primitives
   tagP,
-  modifiersP,
+  modifiersCharP,
   delimitersP,
   modifiersEscP,
   linebreakP,
 
   -- *** Data
   textP,
+  boldP,
+  emphP,
+  inlineCodeP,
+  styleP,
 ) where
 
 import Data.Char (isLetter)
@@ -20,7 +26,9 @@ import Parser.Types (
   Context (..),
   Parser,
   -- Markdown
-  TextM (..),
+  Style (..),
+  -- Level,
+  -- mkLevel,
  )
 
 --
@@ -37,7 +45,7 @@ newline :: T.Text
 newline = "\n"
 
 notTextCharacters :: T.Text
-notTextCharacters = modifiers <> delimiters <> newline <> T.singleton '\\'
+notTextCharacters = modifiers <> delimiters <> newline <> T.pack ['\\', '\00']
 
 isElem :: Char -> Text -> Bool
 isElem c = T.any (== c)
@@ -50,11 +58,11 @@ isElem c = T.any (== c)
 
 ==== __Examples__
 
->>> runParser (some modifiersP) (mkSource "*_`~#")
+>>> runParser (some modifiersCharP) (mkSource "*_`~#")
 Right (Src {srcPos = Pos {unPos = 6}, srcText = ""},"*_`~#")
 -}
-modifiersP :: Parser Char
-modifiersP = match (Context "Modifiers") (`isElem` modifiers)
+modifiersCharP :: Parser Char
+modifiersCharP = match (Context "Modifiers Characters") (`isElem` modifiers)
 
 {- | Parser for a delimiter (see BNF delimiters)
 
@@ -64,7 +72,7 @@ modifiersP = match (Context "Modifiers") (`isElem` modifiers)
 Right (Src {srcPos = Pos {unPos = 5}, srcText = ""},"[]()|")
 -}
 delimitersP :: Parser Char
-delimitersP = match (Context "Delimiters") (`isElem` delimiters)
+delimitersP = match (Context "Delimiters Characters") (`isElem` delimiters)
 
 {- | Parser for an escaped modifier (see BNF modifiersEsc)
 
@@ -76,7 +84,7 @@ Right (Src {srcPos = Pos {unPos = 10}, srcText = ""},"*_`~#")
 Left (Error (Pos {unPos = 0}) (UnexpectedChar ('\\','*')) (Context {unContext = "Specific Character"}))
 -}
 modifiersEscP :: Parser Char
-modifiersEscP = char '\\' *> modifiersP
+modifiersEscP = char '\\' *> modifiersCharP
 
 {- | Parser for an end of line (see BNF linebreak).
 
@@ -92,11 +100,15 @@ linebreakP = many spaceP' *> newlineP -- spaceP' consumes '\t'
 newlineP :: Parser Char
 newlineP = char '\n'
 
+--
+-- Styles
+--
+
 -- | Parser for markdown text (see BNF text)
-textP :: Parser TextM
+textP :: Parser Style
 textP =
   Text . T.pack . mconcat
-    <$> many
+    <$> some
       ( some modifiersEscP
           <|> some
             ( match
@@ -105,15 +117,82 @@ textP =
             )
       )
 
+styleParserBuilder :: Parser a -> Parser b -> Parser [Style]
+styleParserBuilder before after = before *> someTill styleP after
 
-tagP :: Parser TextM
+-- | Parser for markdown bold text (see BNF bold)
+boldP :: Parser Style
+boldP =
+  Bold
+    <$> styleParserBuilder
+      (char '*' *> char '*')
+      (char '*' *> char '*')
+
+-- | Parser for markdown emphasized text (see BNF emphasize)
+emphP :: Parser Style
+emphP =
+  Emph
+    <$> styleParserBuilder
+      (char '*')
+      (char '*')
+
+-- | Parser for markdown inlined code (see BNF inlineCode)
+inlineCodeP :: Parser Style
+inlineCodeP =
+  InlineCode
+    <$> styleParserBuilder
+      (char '`')
+      (char '`')
+
+-- | Parser for markdown striked text (see BNF strike)
+strikeP :: Parser Style
+strikeP =
+  Strike
+    <$> styleParserBuilder
+      (char '~' *> char '~')
+      (char '~' *> char '~')
+
+-- | Parser for markdown underscore text (see BNF underscore)
+underscoreP :: Parser Style
+underscoreP =
+  Underscore
+    <$> styleParserBuilder
+      (char '_' *> char '_')
+      (char '_' *> char '_')
+
+-- | Parser for markdown tagged text (see BNF tag)
+tagP :: Parser Style
 tagP = Tag . T.pack <$> (char '#' *> some (match (Context "Word") isLetter) <* spaceP)
 
--- boldP :: Parser T.Text
--- boldP = between (symbol "**") (symbol "**") (some normalCharP)
+{- Parser for any style (See BNF style)
 
--- italicP :: Parser T.Text
--- italicP = between (symbol "*") (symbol "*") (some normalCharP)
+==== __Examples__
+
+>>> runParser styleP (mkSource "**b*be#tag be*b**")
+Right (Src {srcPos = Pos {unPos = 17}, srcText = ""},Bold [Text "b",Emph [Text "be",Tag "tag",Text "be"],Text "b"])
+>>> runParser (some styleP) (mkSource "text__u__~~s~~")
+Right (Src {srcPos = Pos {unPos = 14}, srcText = ""},[Text "text",Underscore [Text "u"],Strike [Text "s"]])
+-}
+styleP :: Parser Style
+styleP =
+  textP
+    <|> tagP
+    <|> boldP
+    <|> emphP
+    <|> inlineCodeP
+    <|> strikeP
+    <|> underscoreP
+
+
+-- --
+-- -- Heading
+-- --
+
+-- levelP :: Parser Level
+-- levelP = mkLevel <$> someTill (char '#') (char ' ')
+
+
+
 
 -- linkP :: Parser (T.Text, T.Text)
 -- linkP = do

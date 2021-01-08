@@ -1,10 +1,12 @@
 module Parser.Types.Markdown (
   -- $bnf
-  Level (..),
   Paragraph (..),
-  TextM (..),
+  Style (..),
   Link,
   Image,
+  -- * Smart constructors
+  -- Level,
+  -- mkLevel,
 ) where
 
 import Data.Text as T
@@ -14,18 +16,21 @@ newtype Level = Level {unLevel :: Int}
   deriving stock (Show)
   deriving newtype (Eq)
 
+-- mkLevel :: String -> Level
+-- mkLevel = Level . Prelude.length
+
 data Paragraph
-  = Normal [TextM]
-  | Heading Level [TextM]
+  = Normal [Style]
+  | Heading Level [Style]
   deriving stock (Eq, Show)
 
-data TextM
+data Style
   = Text T.Text
-  | Emph TextM
-  | Bold TextM
-  | Strike TextM
-  | Underscore TextM
-  | Code TextM
+  | Emph [Style]
+  | Bold [Style]
+  | Strike [Style]
+  | Underscore [Style]
+  | InlineCode [Style]
   | Tag T.Text
   deriving stock (Show, Eq)
 
@@ -41,12 +46,12 @@ __BNF used to implement combinators and Markdown AST__
 @
 
   # TEXT
-  textm        ::= bold | italic | strike | underscore | code | tag | text
-  text         ::= (modifiersEsc | !(modifiers | escaped | linebreak | newline)+ )*
-  bold         ::= "**" ( textm | text )+ "**"
-  italic       ::= "*"  ( textm | text )+ "*"
-  strike       ::= "~~" ( textm | text )+ "~~"
-  underscore   ::= "__" ( textm | text )+ "__"
+  style        ::= bold | emphasize | strike | underscore | code | tag | text
+  text         ::= (modifiersEsc | !(modifiers | escaped | linebreak | newline)+ )+
+  bold         ::= "**" ( style )+ "**"
+  emphasize    ::= "*"  ( style )+ "*"
+  strike       ::= "~~" ( style )+ "~~"
+  underscore   ::= "__" ( style )+ "__"
   code         ::= "`"  ( text )+ "`"
   tag          ::= "#"  ( text )+
 
@@ -60,7 +65,7 @@ __BNF used to implement combinators and Markdown AST__
   newline      ::= "\r\n" | "\n"
 
   # HEADERS
-  header       ::= "#"+ " " {textm}+
+  header       ::= "#"+ " " {style}+
 
   # LINK
   link         ::= "[" text "](" text ")"

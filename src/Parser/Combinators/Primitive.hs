@@ -20,6 +20,8 @@ module Parser.Combinators.Primitive (
   between,
   sepByMany,
   sepBySome,
+  someTill,
+  manyTill,
 
   -- *** Convenience
   digitP,
@@ -28,7 +30,7 @@ module Parser.Combinators.Primitive (
   spaceP',
 ) where
 
-import Control.Applicative (many, some, (<|>))
+import Control.Applicative (many, some, (<|>), liftA2, Alternative)
 import Data.Char (isDigit, isSpace)
 
 import Data.List.NonEmpty (NonEmpty)
@@ -172,6 +174,26 @@ sepBySome ::
   Parser a ->
   Parser [b]
 sepBySome elementP sepP = (:) <$> elementP <*> many (sepP *> elementP)
+
+{- | Apply parser p ZERO or more until
+end parser consumes result and discards it.
+
+See also `someTill`.
+-}
+manyTill :: Alternative m => m a -> m end -> m [a]
+manyTill p end = go
+  where
+    -- end discarded OR recursively lift over manyTill
+    go = ([] <$ end) <|> liftA2 (:) p go
+
+{- | Apply parser p ONE or more until end parser success.
+end parser consumes result and discards it.
+
+See also `manyTill`.
+-}
+someTill :: Alternative m => m a -> m end -> m [a]
+someTill p end = liftA2 (:) p (manyTill p end)
+
 
 --
 -- Convenience
