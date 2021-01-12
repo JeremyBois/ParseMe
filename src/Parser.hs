@@ -17,7 +17,8 @@ import Data.Text as T
 import Data.Text.IO as TIO
 
 import Parser.Combinators as Y
-import Parser.Types as Types hiding (Pos (..), Src (..))
+import Parser.Types as Types hiding (Pos (..))
+
 
 printResult :: (Show a) => Result a -> IO ()
 printResult s = do

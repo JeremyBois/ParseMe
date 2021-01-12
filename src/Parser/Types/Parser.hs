@@ -4,12 +4,19 @@ module Parser.Types.Parser (
   ErrorKind (..),
   Context (..),
   Error (..),
-  Parser (..),
+  -- ParserT (..),
+  Parser,
   Result,
 
   -- ** Utilities
   extract,
   mkSource,
+  parse,
+  runParser,
+  evalParser,
+  match,
+  char,
+  eof,
 
   -- ** Internal
   Pos (..),
@@ -20,8 +27,9 @@ module Parser.Types.Parser (
 
 import Control.Applicative
 
-import Data.Text as T
+import Control.Monad.Trans.State.Strict
 
+import Data.Text as T
 
 newtype Pos = Pos {unPos :: Int}
   deriving stock (Show)
@@ -45,6 +53,16 @@ data ErrorKind
 data Error = Error !Pos !ErrorKind !Context
   deriving stock (Show, Eq)
 
+-- Must implement Semigroup for Alternative constraint
+-- Only keep last error for now
+instance Semigroup Error where
+  _ <> e2 = e2
+
+-- Must implement Monoid for Alternative constraint
+-- Reuse empty from previous implementation (without State)
+instance Monoid Error where
+  mempty = Error (Pos 0) Empty (Context "Empty")
+
 -- | An input source with position and text to be parsed
 data Src = Src
   { srcPos :: !Pos,
@@ -63,84 +81,160 @@ test_mkSrc pos = Src (Pos pos)
  and update character position in source
 -}
 extract :: Src -> Maybe (Char, Src)
-extract (Src (Pos loc) txt) = if T.null txt then Nothing else Just
-    ( T.head txt,
-      Src (Pos $ loc + 1) (T.tail txt)
-    )
+extract (Src (Pos loc) txt) =
+  if T.null txt
+    then Nothing
+    else
+      Just
+        ( T.head txt,
+          Src (Pos $ loc + 1) (T.tail txt)
+        )
 
--- | Make life easier with an alias
-type Result a = Either Error (Src, a)
+-- data PResult e a
+--   = -- | Parser succeeded
+--     Success a
+--   | -- | Parser failed
+--     Failed e
 
-{- | A parser that can parse a Src and return an error or
- the parsing result with remaining source
+-- All are the same
+-- newtype ParserT e a = ParserT {unParserT :: Src -> (Either e a, Src)}
+-- newtype ParserT e s a = ParserT {unParserT :: s -> (Either e a, s)}
+-- newtype ParserT e a = ParserT {unParserT :: State Src (Either e a)}
+-- newtype ParserT e m a = ParserT {unParserT :: m (Either e a)}
+
+{- | A specialized version of ExceptT (EitherT transformer) with and internal State
+ to keep track of remaining text to be parsed.
+ More general version could accept any monad in place of a State
+ >>> newtype ParserT e m a = ParserT {unParserT :: m (Either e a)}
+ State is used to avoid having to pass the global state manually:
+ >>> newtype ParserT e s a = ParserT {unParserT :: s -> (Either e a, s)}
 -}
-newtype Parser a = Parser
-  { runParser :: Src -> Result a
-  }
+newtype ParserT e s a = ParserT {unParserT :: State s (Either e a)}
 
-instance Functor Parser where
-  fmap f (Parser p) = Parser $ \src -> do
-    -- Either monad handle failure
-    (src', x) <- p src
-    -- Use Tuple functor to apply f
-    -- Same as: return (src', f x)
-    return (fmap f (src', x))
+instance Functor (ParserT e s) where
+  -- Run the parser and map f over the result
+  -- Go in State then in Either using respectively <$> and fmap
+  fmap f pT = ParserT $ fmap f <$> unParserT pT
 
-instance Applicative Parser where
-  -- pure here means Right
-  pure x = Parser (\src -> pure (src, x))
-  (Parser p1) <*> (Parser p2) = Parser $ \src -> do
-    -- Get wrapped function from first parser
-    (s1, f) <- p1 src
-    -- Get wrapped value from second parser
-    (s2, x) <- p2 s1
-    -- Tuple functor to apply f to x inside Either monad
-    return (fmap f (s2, x))
+instance Applicative (ParserT e s) where
+  -- Use already define applicative instance of State and Either
+  pure val = ParserT $ pure $ Right val
+  (ParserT pf) <*> (ParserT px) = ParserT $ do
+    -- Try getting partial function
+    fE <- pf
+    case fE of
+      (Left e) -> return $ Left e
+      (Right f) -> do
+        -- Try getting next function argument
+        xE <- px
+        case xE of
+          (Left e) -> return $ Left e
+          -- Both function and argument exists
+          -- so call function with added argument
+          (Right x) -> return $ Right $ f x
 
-instance Monad Parser where
-  (Parser p1) >>= f = Parser $ \src -> do
-    -- Extract value in either monad
-    (s1, x) <- p1 src
+instance Monad (ParserT e s) where
+  -- return = pure
+  (ParserT px) >>= pf = ParserT $ do
+    xE <- px
+    case xE of
+      (Left err) -> return $ Left err
+      (Right x) -> unParserT $ pf x
 
-    -- Apply function and wrap it again
-    runParser (f x) s1
+instance (Monoid e) => Alternative (ParserT e s) where
+  -- Error type should have an instance of Monoid
+  -- to provided mempty
+  empty = ParserT $ return (Left mempty)
 
-instance Alternative Parser where
-  empty :: Parser a
-  -- Discard provide source and always returns (Left err)
-  empty = Parser $ const (Left err)
-    where
-      -- Build error when empty
-      err = Error (Pos 0) Empty (Context "Empty")
+  (ParserT p1) <|> (ParserT p2) = ParserT $ do
+    -- Get previous State to be able to revert
+    oldSrc <- get
+    -- Try first parser
+    p1Result <- p1
+    case p1Result of
+      -- First revert the global state ...
+      -- ... then
+      --    If p2 fails then combine both errors and wrap it in Left again
+      --    If p2 succeeds then wrap result back in Right
+      -- fmap allows to lift over State to reach the Either value
+      -- Can be read as below
+      -- (lift_over_State) (either (func_if_failure) (func_if_success)) (state_value)
+      (Left err) -> put oldSrc >> fmap (either (Left . mappend err) Right) p2
+      (Right x) -> return (Right x)
 
-  (<|>) :: Parser a -> Parser a -> Parser a
-  (Parser p1) <|> (Parser p2) = Parser $ \src ->
-    case p1 src of
-      -- If first failed try the other one
-      (Left _) -> p2 src
-      -- If first is a success ignore other one
-      result -> result
 
--- instance Alternative Parser where
---   empty :: Parser a
---   -- Discard provide source and always returns (Left err)
---   empty = Parser $ const (Left err)
---     where
---       -- Build error when empty
---       err = Error (Pos 0) Empty (Context "Empty Alternative")
+-- | Specialized version used in the library
+type Parser = ParserT Error Src
 
---   (<|>) :: Parser a -> Parser a -> Parser a
---   (Parser p1) <|> (Parser p2) = Parser $ \src ->
---     case p1 src of
---       -- If first failed without consuming any char
---       -- try the other one else propagate the failure
---       failure@(Left (Error newPos _ _)) ->
---         if newPos == srcPos src
---           then p2 src
---           else failure
---       -- If first is a success ignore other one
---       result -> result
+-- | Alias for parser output
+type Result a = Either Error a
 
--- How ??
--- instance (Show a) => Show (Parser a) where
---     show (Parser p) = show (\src -> runParser p src)
+runParser ::
+  -- | Parser to run
+  Parser a ->
+  -- | Text to parse
+  T.Text ->
+  -- Parsing result
+  (Result a, Src)
+-- 1) Build a source from user text
+-- 2) Extract State from transformer (function)
+-- 3) Use our src as first argument for runState
+runParser p str = runState (unParserT p) (mkSource str)
+
+evalParser :: Parser a -> T.Text -> Result a
+evalParser p = fst . runParser p
+
+parse :: Parser a -> T.Text -> (Result a, Src)
+parse = runParser
+
+-- | Parse input character
+char :: Char -> Parser Char
+char askedChar = ParserT $ do
+  -- Get State value
+  src <- get
+
+  case extract src of
+    (Just (c, newSrc)) ->
+      if c == askedChar
+        then put newSrc >> (return . Right) c
+        else
+          (return . Left) $
+            Error
+              (srcPos src)
+              (UnexpectedChar (askedChar, c))
+              (Context "Specific Character")
+    Nothing ->
+      if askedChar == '\NUL'
+        then (return . Right) askedChar
+        else
+          (return . Left) $
+            Error (srcPos src) UnexpectedEof (Context "EOF")
+
+match :: Context -> (Char -> Bool) -> Parser Char
+match context f = ParserT $ do
+  src <- get
+  go src
+  where
+    go src@(extract -> Just (c, newSrc))
+      | f c = put newSrc >> (return . Right) c
+      | otherwise =
+        (return . Left) $
+          Error
+            (srcPos src)
+            (MissmatchPredicate c)
+            context
+    -- Nothing case
+    go src =
+      (return . Left) $
+        Error (srcPos src) UnexpectedEof context
+
+-- | Failed if not EOF else always succeed without moving the cursor position
+eof :: Parser ()
+eof = ParserT $ do
+  (Src pos txt) <- get
+
+  if T.null txt
+    then -- EOF parsed
+      (return . Right) ()
+    else -- Still something to parse
+      (return . Left) $ Error pos (UnexpectedChar ('\NUL', T.head txt)) (Context "Parse EOF")

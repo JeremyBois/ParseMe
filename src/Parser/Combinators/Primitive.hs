@@ -43,47 +43,47 @@ import Parser.Types
 --  Primitive combinators
 --
 
--- | Parse next character if it matches a predicate.
-match :: Context -> (Char -> Bool) -> Parser Char
-match context f = Parser go
-  where
-    go src@(extract -> Just (foundChar, newSrc))
-      | f foundChar = Right (newSrc, foundChar)
-      | otherwise =
-        Left $
-          Error
-            (srcPos src)
-            (MissmatchPredicate foundChar)
-            context
-    -- Nothing case
-    go src =
-      Left $
-        Error (srcPos src) UnexpectedEof context
+-- -- | Parse next character if it matches a predicate.
+-- match :: Context -> (Char -> Bool) -> Parser Char
+-- match context f = Parser go
+--   where
+--     go src@(extract -> Just (foundChar, newSrc))
+--       | f foundChar = Right (newSrc, foundChar)
+--       | otherwise =
+--         Left $
+--           Error
+--             (srcPos src)
+--             (MissmatchPredicate foundChar)
+--             context
+--     -- Nothing case
+--     go src =
+--       Left $
+--         Error (srcPos src) UnexpectedEof context
 
--- | Parse input character
-char :: Char -> Parser Char
-char askedChar = Parser go
-  where
-    -- Take avantage of ViewPatterns to pattern on functions
-    -- Less verbose version of case expression
-    -- go = \src -> case extract src of
-    --   Just (foundChar, newSrc) -> undefined
-    --   Nothing                -> undefined
-    go src@(extract -> Just (foundChar, newSrc))
-      | foundChar == askedChar = Right (newSrc, foundChar)
-      | otherwise =
-        Left $
-          Error
-            (srcPos src)
-            (UnexpectedChar (askedChar, foundChar))
-            (Context "Specific Character")
-    -- Nothing case
-    go src =
-      if askedChar == '\NUL'
-        then Right (src, askedChar)
-        else
-          Left $
-            Error (srcPos src) UnexpectedEof (Context "EOF")
+-- -- | Parse input character
+-- char :: Char -> Parser Char
+-- char askedChar = Parser go
+--   where
+--     -- Take avantage of ViewPatterns to pattern on functions
+--     -- Less verbose version of case expression
+--     -- go = \src -> case extract src of
+--     --   Just (foundChar, newSrc) -> undefined
+--     --   Nothing                -> undefined
+--     go src@(extract -> Just (foundChar, newSrc))
+--       | foundChar == askedChar = Right (newSrc, foundChar)
+--       | otherwise =
+--         Left $
+--           Error
+--             (srcPos src)
+--             (UnexpectedChar (askedChar, foundChar))
+--             (Context "Specific Character")
+--     -- Nothing case
+--     go src =
+--       if askedChar == '\NUL'
+--         then Right (src, askedChar)
+--         else
+--           Left $
+--             Error (srcPos src) UnexpectedEof (Context "EOF")
 
 -- | Transform a parser to also consume any leading space.
 token :: Parser a -> Parser a
@@ -133,13 +133,13 @@ between ::
   Parser a
 between b a p = b *> p <* a
 
--- | Failed if not EOF else always succeed without moving the cursor position
-eof :: Parser ()
-eof = Parser $ \src@(Src pos txt) -> if T.null txt
-  -- EOF parsed
-  then Right (src, ())
-  -- Still something to parse
-  else Left $ Error pos (UnexpectedChar ('\NUL', T.head txt)) (Context "Parse EOF")
+-- -- | Failed if not EOF else always succeed without moving the cursor position
+-- eof :: Parser ()
+-- eof = Parser $ \src@(Src pos txt) -> if T.null txt
+--   -- EOF parsed
+--   then Right (src, ())
+--   -- Still something to parse
+--   else Left $ Error pos (UnexpectedChar ('\NUL', T.head txt)) (Context "Parse EOF")
 
 {- | Parse ZERO or more element separated with a specific separator
 

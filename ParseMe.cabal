@@ -59,7 +59,8 @@ library
       Parser
       Parser.Combinators
       Parser.Types
-
+  build-depends:
+      transformers
   other-modules:
       Parser.Combinators.Primitive
       Parser.Combinators.Markdown
