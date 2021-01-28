@@ -103,8 +103,8 @@ any = match (Context "Any Character") (const True)
 ==== __Examples__
 
 >>> import Data.List.NonEmpty (fromList)
->>> runParser (choice (fromList [char 'a', char 'b'])) (mkSource "abc")
-Right (Src {srcPos = Pos {unPos = 1}, srcText = "bc"},'a')
+>>> runParser (choice (fromList [char 'a', char 'b'])) "abc"
+(Right 'a',Src {srcPos = Pos {unPos = 1}, srcText = "bc"})
 -}
 choice :: NonEmpty (Parser a) -> Parser a
 choice = Prelude.foldr1 (<|>)
@@ -115,12 +115,11 @@ before and after parsed data by last argument parser.
 
 ==== __Examples__
 
->>> runParser (between spaceP eof boolP) (mkSource " False")
-Right (Src {srcPos = Pos {unPos = 6}, srcText = ""},False)
+>>> runParser (between spaceP eof boolP) " False"
+(Right False,Src {srcPos = Pos {unPos = 6}, srcText = ""})
 
->>> runParser (between spaceP eof boolP) (mkSource "False")
-Right (Src {srcPos = Pos {unPos = 6}, srcText = ""},False)
-Left (Error (Pos {unPos = 0}) (MissmatchPredicate 'F') (Context {unContext = "Space"}))
+>>> runParser (between spaceP eof boolP) "False"
+(Left (Error (Pos {unPos = 0}) (MissmatchPredicate 'F') (Context {unContext = "Space"})),Src {srcPos = Pos {unPos = 0}, srcText = "False"})
 -}
 between ::
   -- | Parser used to consume characters before value of interest
@@ -145,11 +144,11 @@ between b a p = b *> p <* a
 
 ==== __Examples__
 
->>> runParser ((token digitP) `sepByMany` (token $ char ',')) (mkSource "2, 3")
-Right (Src {srcPos = Pos {unPos = 4}, srcText = ""},"23")
+>>> runParser ((token digitP) `sepByMany` (token $ char ',')) "2, 3"
+(Right "23",Src {srcPos = Pos {unPos = 4}, srcText = ""})
 
->>> runParser ((token digitP) `sepByMany` (token $ char ',')) (mkSource "")
-Right (Src {srcPos = Pos {unPos = 0}, srcText = ""},"")
+>>> runParser ((token digitP) `sepByMany` (token $ char ',')) ""
+(Right "",Src {srcPos = Pos {unPos = 0}, srcText = ""})
 -}
 sepByMany ::
   Parser b ->
@@ -161,11 +160,11 @@ sepByMany elementP sepP = sepBySome elementP sepP <|> pure []
 
 ==== __Examples__
 
->>> runParser ((token digitP) `sepByMany` (token $ char ',')) (mkSource "2, 3")
-Right (Src {srcPos = Pos {unPos = 4}, srcText = ""},"23")
+>>> runParser ((token digitP) `sepBySome` (token $ char ',')) "2, 3"
+(Right "23",Src {srcPos = Pos {unPos = 4}, srcText = ""})
 
->>> runParser ((token digitP) `sepByMany` (token $ char ',')) (mkSource "")
-Left (Error (Pos {unPos = 0}) UnexpectedEof (Context {unContext = "Digit"}))
+>>> runParser ((token digitP) `sepBySome` (token $ char ',')) ""
+(Left (Error (Pos {unPos = 0}) UnexpectedEof (Context {unContext = "Digit"})),Src {srcPos = Pos {unPos = 0}, srcText = ""})
 -}
 sepBySome ::
   -- | Parser used to parse elements

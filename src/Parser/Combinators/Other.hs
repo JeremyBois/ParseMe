@@ -74,11 +74,3 @@ boolP = tryTrue <|> tryFalse
     -- first argument (here True or False)
     tryTrue = True <$ (stringP "True" <|> stringP "true")
     tryFalse = False <$ (stringP "False" <|> stringP "false")
-
--- -- | *> - Sequence actions, discarding the value of the first argument
--- -- <* - Sequence actions, discarding the value of the second argument
--- quoteP :: Parser T.Text
--- quoteP = char '\"' *> many normalCharP <* char '\"'
-
--- normalCharP :: Parser Char
--- normalCharP = match (Context "Normal Character") ((&&) <$> (/= '"') <*> (/= '\n'))

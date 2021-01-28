@@ -68,8 +68,8 @@ isElem c = T.any (== c)
 
 ==== __Examples__
 
->>> runParser (some modifiersCharP) (mkSource "*_`~#")
-Right (Src {srcPos = Pos {unPos = 6}, srcText = ""},"*_`~#")
+>>> runParser (some modifiersCharP) "*_`~#"
+(Right "*_`~#",Src {srcPos = Pos {unPos = 5}, srcText = ""})
 -}
 modifiersCharP :: Parser Char
 modifiersCharP = match (Context "Modifiers Characters") (`isElem` modifiers)
@@ -78,8 +78,8 @@ modifiersCharP = match (Context "Modifiers Characters") (`isElem` modifiers)
 
 ==== __Examples__
 
->>> runParser (some delimitersP) (mkSource "[]()|")
-Right (Src {srcPos = Pos {unPos = 5}, srcText = ""},"[]()|")
+>>> runParser (some delimitersP) "[]()|"
+(Right "[]()|",Src {srcPos = Pos {unPos = 5}, srcText = ""})
 -}
 delimitersP :: Parser Char
 delimitersP = match (Context "Delimiters Characters") (`isElem` delimiters)
@@ -88,10 +88,10 @@ delimitersP = match (Context "Delimiters Characters") (`isElem` delimiters)
 
 ==== __Examples__
 
->>> runParser (some modifiersEscP) (mkSource "\\*\\_\\`\\~\\#")
-Right (Src {srcPos = Pos {unPos = 10}, srcText = ""},"*_`~#")
->>> runParser (some modifiersEscP) (mkSource "*_`~#")
-Left (Error (Pos {unPos = 0}) (UnexpectedChar ('\\','*')) (Context {unContext = "Specific Character"}))
+>>> runParser (some modifiersEscP) "\\*\\_\\`\\~\\#"
+(Right "*_`~#",Src {srcPos = Pos {unPos = 10}, srcText = ""})
+>>> runParser (some modifiersEscP) "*_`~#"
+(Left (Error (Pos {unPos = 0}) (UnexpectedChar ('\\','*')) (Context {unContext = "Specific Character"})),Src {srcPos = Pos {unPos = 0}, srcText = "*_`~#"})
 -}
 modifiersEscP :: Parser Char
 modifiersEscP = char '\\' *> modifiersCharP
@@ -100,8 +100,8 @@ modifiersEscP = char '\\' *> modifiersCharP
 
 ==== __Examples__
 
->>> runParser (some linebreakP) (mkSource "   \n")
-Right (Src {srcPos = Pos {unPos = 4}, srcText = ""},"\n")
+>>> runParser (some linebreakP) "   \n"
+(Right "\n",Src {srcPos = Pos {unPos = 4}, srcText = ""})
 -}
 linebreakP :: Parser Char
 linebreakP = many spaceP' *> newlineP -- spaceP' consumes '\t'
@@ -178,10 +178,10 @@ tagP = Tag . T.pack <$> (char '#' *> some (match (Context "Word") isLetter) <* s
 
 ==== __Examples__
 
->>> runParser styleP (mkSource "**b*be#tag be*b**")
-Right (Src {srcPos = Pos {unPos = 17}, srcText = ""},Bold [Text "b",Emph [Text "be",Tag "tag",Text "be"],Text "b"])
->>> runParser (some styleP) (mkSource "text__u__~~s~~")
-Right (Src {srcPos = Pos {unPos = 14}, srcText = ""},[Text "text",Underscore [Text "u"],Strike [Text "s"]])
+>>> runParser styleP "**b*be#tag be*b**"
+(Right (Bold [Text "b",Emph [Text "be",Tag "tag",Text "be"],Text "b"]),Src {srcPos = Pos {unPos = 17}, srcText = ""})
+>>> runParser (some styleP) "text__u__~~s~~"
+(Right [Text "text",Underscore [Text "u"],Strike [Text "s"]],Src {srcPos = Pos {unPos = 14}, srcText = ""})
 -}
 styleP :: Parser Style
 styleP =
@@ -214,8 +214,8 @@ lineP = mkLine <$> someTill styleP theEnd
 
 ==== __Examples__
 
->>> runParser (some paragraphP) (mkSource "## Heading \n Text **Bold**")
-Right (Src {srcPos = Pos {unPos = 26}, srcText = ""},[Heading (Level {unLevel = 2}) [Text "Heading "],Line [Text " Text ",Bold [Text "Bold"]]])
+>>> runParser (some paragraphP) "## Heading \n Text **Bold**"
+(Right [Heading (Level {unLevel = 2}) [Text "Heading "],Line [Text " Text ",Bold [Text "Bold"]]],Src {srcPos = Pos {unPos = 26}, srcText = ""})
 -}
 paragraphP :: Parser Paragraph
 paragraphP = headingP <|> lineP
