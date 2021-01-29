@@ -15,18 +15,19 @@ module Parser (
 
 import Data.Text as T
 import Data.Text.IO as TIO
+import qualified Text.Show.Unicode as TSU
 
 import Parser.Combinators as Y
 import Parser.Types as Types hiding (Pos (..))
 
 
 printResult :: (Show a) => Result a -> IO ()
-printResult s = do
-  TIO.putStrLn $ prettyResult s
+printResult s = TIO.putStrLn $ prettyResult s
 
 prettyResult :: (Show a) => Result a -> T.Text
 prettyResult (Left err) = prettyError err
-prettyResult (Right res) = T.pack $ show res -- @TODO Add pretty version
+prettyResult (Right res) = T.pack $ TSU.ushow res -- @TODO Add pretty version
+
 
 prettyError :: Error -> T.Text
 prettyError (Error pos err context) = case err of

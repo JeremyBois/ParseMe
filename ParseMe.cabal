@@ -22,6 +22,7 @@ source-repository head
 common common-options
   build-depends:        base >= 4.11 && < 4.15
                       , text ^>= 1.2.3.0
+                      , unicode-show
 
   ghc-options:         -Wall
                        -Wcompat

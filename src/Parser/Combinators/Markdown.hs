@@ -10,6 +10,7 @@ module Parser.Combinators.Markdown (
   underscoreP,
   inlineCodeP,
   tagP,
+  delimitersP,
 
   -- *** Paragraph
   paragraphP,
