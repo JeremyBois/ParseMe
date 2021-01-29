@@ -1,6 +1,6 @@
 # ParseMe
 
-A exploratory project of [**parser combinators**](https://en.wikipedia.org/wiki/Parser_combinator) to get more used to following tools:
+An exploratory project of [**parser combinators**](https://en.wikipedia.org/wiki/Parser_combinator) to get more used to the following tools:
   - Functor
   - Applicative
   - Monad
@@ -26,7 +26,7 @@ Right [Heading (Level {unLevel = 2}) [Text "Heading "],Line [Text " Text ",Bold 
 Right [Heading (Level {unLevel = 2}) [Text "Heading "],Line [Text " Text ",Bold [Text "Bold"]]]
 ```
 
-In case of parsing error context and failure detail is given. Below an example where we want to parse a bold text (`**text**`) but there is a missing `*`.
+In case of parsing error, context and failure detail are given. Below an example where we want to parse a bold text (`**text**`) but there is a missing `*`.
 ```haskell
 -- Full output (failure result and buffer state)
 >>> runParser boldP "*Bold**"
@@ -70,7 +70,7 @@ For example for a simple mathematical expression using only natural numbers the 
 ```
 
 ### Parser combinator
-A parser combinator is a parser built based on other parser allowing to recursively parse an input. This approach allows to create primitives that can parse only a specific form and combine them to create complex parser without sacrificing modularity, readability and maintenability.
+A parser combinator is a parser built using a combination of multiple other parsers allowing to recursively parse an input. This approach allows to create primitives that can parse only a specific form and combine them to create complex parser without sacrificing modularity, readability and maintenability.
 
 As an example, how can we parse the following markdown text ?
 
@@ -83,7 +83,7 @@ Using the combinator approach we can split it in multiple small parts:
   - `textBoldParser` a parser for `**text**`
   - `textEmphParser` a parser for `*text*`
 
-Then, to be able to parse the whole line we only have to combine them (here `<|>` is used as a combine operator because its the syntax choose in the `Alternative` typeclass).
+Then, to be able to parse the whole line we only have to combine them (here `<|>` is used as a combine operator because its the syntax chosen in the `Alternative` typeclass).
 Our complete parser can then be written only using our small combinators as follow:
 ```haskell
 completeParser = textNormalParser <|> textBoldParser <|> textEmphParser
